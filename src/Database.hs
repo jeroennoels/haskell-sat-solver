@@ -23,18 +23,17 @@ insertClause clause index (Lit i) = M.alter (cons clause) i index
 indexClause :: Index -> Clause -> Index
 indexClause index clause = foldl (insertClause clause) index (literals clause)
 
-indexClauses :: [Clause] -> Index
-indexClauses = foldl indexClause M.empty
+indexAll :: [Clause] -> Index
+indexAll = foldl indexClause M.empty
 
 fromPrimitives :: [[Int]] -> [Clause]
 fromPrimitives = map (Clause . map Lit)
 
 makeDatabase :: [[Int]] -> Database
-makeDatabase prims = Database clauses (indexClauses clauses)
+makeDatabase prims = Database clauses (indexAll clauses)
   where
     clauses = fromPrimitives prims
 
--- used for assertions
 allClauses :: Database -> [Clause]
 allClauses (Database clauses _) = clauses
 
