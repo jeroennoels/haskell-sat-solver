@@ -1,4 +1,7 @@
-module Assignment (Assignment, emptyAssignment, isAssigned, extend) where
+module Assignment (
+  Assignment,
+  emptyAssignment, isAssigned, extend,
+  test_assignment) where
 
 import Global
 import Data.IntSet (IntSet)
@@ -33,3 +36,11 @@ assertAssigned :: Lit -> Assignment -> Assignment
 assertAssigned x a
   | isAssigned a x = a
   | otherwise = error $ "assertAssigned: " ++ show x
+
+test_assignment :: Bool
+test_assignment = isAssigned a (Lit 4)
+  && not (isAssigned a (Lit (-6)))
+  && isAssigned b (Lit (-6))
+  where
+    a = extend emptyAssignment (map Lit [1..5])
+    b = extend a [Lit (-6)]

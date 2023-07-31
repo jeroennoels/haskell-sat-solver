@@ -1,4 +1,4 @@
-module ReadCNF (linesToClauses, readCNF) where
+module ReadCNF (readCNF, test_linesToClauses) where
 
 import qualified Data.ByteString.Char8 as C
 
@@ -33,3 +33,10 @@ readLines filepath = C.lines `fmap` C.readFile filepath
 
 readCNF :: String -> IO [[Int]]
 readCNF filepath = linesToClauses `fmap` readLines filepath
+
+
+test_linesToClauses :: Bool
+test_linesToClauses = clauses == [[48,-58,63], [-58,63]]
+  where
+    dimacs = ["c comment", "p cnf 123 456", "48 -58 63 0", "-58 63 0"]
+    clauses = linesToClauses (map C.pack dimacs)

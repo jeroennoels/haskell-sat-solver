@@ -1,4 +1,7 @@
-module Database (Database, makeDatabase, allClauses, clausesWith) where
+module Database (
+  Database,
+  makeDatabase, allClauses, clausesWith,
+  test_database) where
 
 import Global
 import Data.IntMap.Strict (IntMap)
@@ -39,3 +42,16 @@ allClauses (Database clauses _) = clauses
 
 clausesWith :: Database -> Lit -> [Clause]
 clausesWith (Database _ index) (Lit i) = index M.! i
+
+
+test_database :: Bool
+test_database = length (allClauses db) == 3
+  && check (clausesWith db (Lit 1)) [c,a]
+  && check (clausesWith db (Lit 4)) [c,b]
+  && check (clausesWith db (Lit (-6))) [c]
+  where
+    a = [1,-2,3]
+    b = [4,5]
+    c = [1,4,-6]
+    db = makeDatabase [a,b,c]
+    check clauses prims = map literals clauses == map (map Lit) prims
