@@ -1,4 +1,4 @@
-module ReadCNF (readCNF) where
+module ReadCNF (linesToClauses, readCNF) where
 
 import qualified Data.ByteString.Char8 as C
 
