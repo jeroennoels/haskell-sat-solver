@@ -23,4 +23,4 @@ runTests = sequence_ $ map putStrLn [
   show test_assignment,
   show test_linesToClauses,
   show test_database,
-  show test_evaluate]
+  show test_unitPropagation]
