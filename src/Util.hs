@@ -1,5 +1,7 @@
 module Util where
 
+import Data.List (nub, (\\))
+
 -- sieve f g zs = (xs, ys)
 -- reverse xs = filter f zs
 -- reverse ys = filter g (filter (not . f) zs)

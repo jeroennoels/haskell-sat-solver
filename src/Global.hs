@@ -8,7 +8,8 @@ newtype Var = Var Int deriving (Show, Eq)
 
 newtype Lit = Lit Int deriving (Show, Eq)
 
-newtype Clause = Clause [Lit] deriving Show
+-- Eq instance for testing purposes only
+newtype Clause = Clause [Lit] deriving (Show, Eq)
 
 variable :: Lit -> Var
 variable (Lit i) = Var (abs i)

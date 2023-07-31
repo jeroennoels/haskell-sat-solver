@@ -1,6 +1,6 @@
 module Database (
-  Database,
-  makeDatabase, allClauses, clausesWith,
+  Database, makeClauses, makeDatabase,
+  allClauses, clausesWith,
   test_database) where
 
 import Global
@@ -29,13 +29,13 @@ indexClause index clause = foldl (insertClause clause) index (literals clause)
 indexAll :: [Clause] -> Index
 indexAll = foldl indexClause M.empty
 
-fromPrimitives :: [[Int]] -> [Clause]
-fromPrimitives = map (Clause . map Lit)
+makeClauses :: [[Int]] -> [Clause]
+makeClauses = map (Clause . map Lit)
 
 makeDatabase :: [[Int]] -> Database
 makeDatabase prims = Database clauses (indexAll clauses)
   where
-    clauses = fromPrimitives prims
+    clauses = makeClauses prims
 
 allClauses :: Database -> [Clause]
 allClauses (Database clauses _) = clauses
@@ -54,4 +54,4 @@ test_database = length (allClauses db) == 3
     b = [4,5]
     c = [1,4,-6]
     db = makeDatabase [a,b,c]
-    check clauses prims = map literals clauses == map (map Lit) prims
+    check clauses raw = clauses == makeClauses raw
