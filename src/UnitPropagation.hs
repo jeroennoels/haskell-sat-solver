@@ -106,20 +106,24 @@ analyze evals
 fullAnalysis :: Database -> Assignment -> Analysis
 fullAnalysis db a = analyze $ map (evaluate a) (allClauses db)
 
-recurse :: Database -> Assignment -> [Lit] -> [[Eval]]
-  -> ([[Eval]], Assignment, Analysis)
+-- Assuming the argument list is filtered for @Unit@.
+uniqueLiterals :: [Eval] -> [Lit]
+uniqueLiterals = nub . map fromUnit
+
+data Propagated = Propagated Analysis Assignment [[Eval]] deriving Show
+
+recurse :: Database -> Assignment -> [Lit] -> [[Eval]] -> Propagated
 recurse db a xs acc =
   case analysis of
-    Units [] -> (acc, aa, analysis)
-    Units units -> recurse db aa (nub $ map fromUnit units) acc'
-    Conflicts _ _ -> (acc, aa, analysis)
+    Units [] -> Propagated analysis aa acc
+    Units units -> recurse db aa (uniqueLiterals units) (evals:acc)
+    Conflicts _ _ -> Propagated analysis aa acc
   where
     aa = extend a xs
     evals = evaluations db aa xs
-    acc' = evals:acc
     analysis = analyze evals
 
-propagate :: Database -> Assignment -> Lit -> ([[Eval]], Assignment, Analysis)
+propagate :: Database -> Assignment -> Lit -> Propagated
 propagate db a x = recurse db a [x] []
 
 
