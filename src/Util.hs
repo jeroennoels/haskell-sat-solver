@@ -1,6 +1,7 @@
 module Util where
 
-import Data.List (nub, (\\))
+singleton :: [a] -> a
+singleton [x] = x
 
 -- sieve f g zs = (xs, ys)
 -- reverse xs = filter f zs
