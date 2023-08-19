@@ -1,4 +1,6 @@
-module UnitPropagation (propagate, test_unitPropagation) where
+module UnitPropagation (
+  Propagated(Propagated), propagate,
+  test_unitPropagation) where
 
 import Data.List (nub, splitAt)
 import Util (sieve, singleton)
@@ -30,7 +32,7 @@ isUnit _ = False
 fromUnit :: Eval -> Lit
 fromUnit (Unit _ x) = x
 
--- Assuming @Unit@ ore @Conflict@ argument.
+-- Assuming @Unit@ or @Conflict@ argument.
 antecedent :: Eval -> Clause
 antecedent (Unit clause _) = clause
 antecedent (Conflict clause) = clause
@@ -38,6 +40,7 @@ antecedent (Conflict clause) = clause
 evaluate :: Assignment -> Clause -> Eval
 evaluate a clause
   | any (isAssigned a) xs = Satisfied
+  | not ok = error "evaluate"
   | null reduced = Conflict clause
   | null (tail reduced) = Unit clause (singleton reduced)
   | otherwise = Unresolved
@@ -45,6 +48,7 @@ evaluate a clause
     xs = literals clause
     falsified = isAssigned a . negation
     reduced = filter (not . falsified) xs
+    ok = optimized || null reduced == all falsified xs
 
 -- Assuming the literals @xs@ are assigned in @a@.
 evaluations :: Database -> Assignment -> [Lit] -> [Eval]
@@ -60,7 +64,7 @@ evaluations db a xs = map (evaluate a) relevant
 -- A mutual conflict arises when two clauses become simultaneously
 -- unit with opposite conclusions.
 
-data Mutual = Mutual Eval Clause deriving (Show, Eq)
+data Mutual = Mutual Eval Eval deriving (Show, Eq)
 
 -- Eq instance for testing purposes only
 data Analysis = Units [Eval]
@@ -84,7 +88,7 @@ negative (Var i) (Unit _ (Lit j)) = i == negate j
 -- Assuming the argument list is filtered for @Unit@.
 -- Returns one of the clauses that contribute to a mutual conflict.
 mutualConflict :: [Eval] -> Var -> Mutual
-mutualConflict units var = Mutual a (antecedent b)
+mutualConflict units var = Mutual a b
   where  -- there must be at least one positive and one negative
     (a:_, b:_) = sieve (positive var) (negative var) units
 
@@ -103,6 +107,7 @@ analyze evals
     (units, conflicts) = sieve isUnit isConflict evals
     mutuals = mutualConflicts units
 
+-- For verification only.
 fullAnalysis :: Database -> Assignment -> Analysis
 fullAnalysis db a = analyze $ map (evaluate a) (allClauses db)
 
@@ -110,6 +115,7 @@ fullAnalysis db a = analyze $ map (evaluate a) (allClauses db)
 uniqueLiterals :: [Eval] -> [Lit]
 uniqueLiterals = nub . map fromUnit
 
+-- Nested list of @Eval@ just to avoid needless flattening.
 data Propagated = Propagated Analysis Assignment [[Eval]] deriving Show
 
 recurse :: Database -> Assignment -> [Lit] -> [[Eval]] -> Propagated
@@ -168,7 +174,7 @@ test_analyze =
   -- order depends on implementation details, but good enough for now
   reverse output == take 5 (tail evals)
   && conflict == b
-  && mutualClause == c && mutualEval == evals !! 3
+  && antecedent mutual2 == c && mutual1 == evals !! 3
   where
     (as, (b:c:_)) = splitAt 5 testClauses
     xs = map Lit [1..5]
@@ -176,4 +182,4 @@ test_analyze =
     evals = [Satisfied] ++ zipWith Unit as xs ++ [Unresolved]
     more = evals ++ [Conflict b, Unit c x]  -- direct and mutual
     Units output = analyze evals
-    Conflicts [conflict] [Mutual mutualEval mutualClause] = analyze more
+    Conflicts [conflict] [Mutual mutual1 mutual2] = analyze more
