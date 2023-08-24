@@ -1,8 +1,9 @@
 module UnitPropagation (
-  Result(..), Implied(..), Summary(..),
+  ConflictDetail(..), Implied(..), Summary(..), Result(..),
   propagate,
   test_unitPropagation) where
 
+import Data.Maybe (mapMaybe)
 import Data.List (nub, splitAt)
 import Util (consIf, sieve, singleton)
 import Global
@@ -144,32 +145,46 @@ recurse db a xs acc =
     analysis = analyze (evaluations db aa xs)
 
 
-data Summary = NoConflict | ConflictClauses [Clause] deriving Show
-
 data Implied = Implied Clause Lit deriving Show
 
-data Result = Result Summary Assignment [[Implied]] deriving Show
+data ConflictDetail = Direct Clause
+                    | FromMutual Implied Clause
+                    deriving Show
+
+data Summary = NoConflict | Conflicting [ConflictDetail]
+  deriving Show
+
+data Result = Result Summary Assignment [[Implied]]
+  deriving Show
 
 cast :: Eval -> Implied
 cast (Unit c x) = Implied c x
 
 -- split into an implication and an ordinary conflict
-breakSymmetry :: Mutual -> (Implied, Clause)
-breakSymmetry (Mutual a b) = (cast a, antecedent b)
+breakSymmetry :: Mutual -> ConflictDetail
+breakSymmetry (Mutual a b) = FromMutual (cast a) (antecedent b)
 
-summarize :: Analysis -> (Summary, [Implied])
-summarize (Units []) = (NoConflict, [])
-summarize (Conflicts direct mutuals) = (ConflictClauses clauses, implieds)
+summarize :: Analysis -> Summary
+summarize (Units []) = NoConflict
+summarize (Conflicts direct mutuals) = Conflicting details
   where
-    (implieds, conflicts) = unzip (map breakSymmetry mutuals)
-    clauses = direct ++ conflicts
+    details = map Direct direct ++ map breakSymmetry mutuals
+
+conflictDetails :: Summary -> [ConflictDetail]
+conflictDetails (Conflicting details) = details
+conflictDetails NoConflict = []
+
+impliedFromMutual :: ConflictDetail -> Maybe Implied
+impliedFromMutual (FromMutual i _) = Just i
+impliedFromMutual _ = Nothing
 
 consolidate :: Propagated -> Result
 consolidate (Propagated analysis a nested) = Result summary a implieds
   where
-    (summary, fromMutuals) = summarize analysis
+    summary = summarize analysis
     casted = map (map cast) nested
-    implieds = consIf (not . null) fromMutuals casted
+    mutual = mapMaybe impliedFromMutual (conflictDetails summary)
+    implieds = consIf (not . null) mutual casted
 
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x = consolidate $ recurse db a [x] []
