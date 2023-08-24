@@ -1,9 +1,10 @@
 module UnitPropagation (
-  Propagated(Propagated), propagate,
+  Result(..), Implied(..), Summary(..),
+  propagate,
   test_unitPropagation) where
 
 import Data.List (nub, splitAt)
-import Util (sieve, singleton)
+import Util (consIf, sieve, singleton)
 import Global
 import Database
 import Assignment
@@ -56,7 +57,8 @@ evaluations db a xs = map (evaluate a) relevant
   where
     -- We only care about clauses in which one of the given
     -- literals occurs falsified.
-    relevant = concatMap (clausesWith db) (map negation xs)
+    -- Not sure @nub@ is the best way to remove duplicates here.
+    relevant = nub $ concatMap (clausesWith db) (map negation xs)
 
 
 -- We distinguish two kinds of conflict: direct and mutual.
@@ -87,8 +89,9 @@ negative (Var i) (Unit _ (Lit j)) = i == negate j
 
 -- Assuming the argument list is filtered for @Unit@.
 -- Returns one of the clauses that contribute to a mutual conflict.
+-- This step potentially involves making an arbitrary choice.
 mutualConflict :: [Eval] -> Var -> Mutual
-mutualConflict units var = Mutual a b
+mutualConflict units var = Mutual a b  -- arbitrary
   where  -- there must be at least one positive and one negative
     (a:_, b:_) = sieve (positive var) (negative var) units
 
@@ -104,6 +107,7 @@ analyze evals
   | null conflicts && null mutuals = Units units
   | otherwise = Conflicts (map antecedent conflicts) mutuals
   where
+    -- Unresolved clauses and satisfied clauses are ignored.
     (units, conflicts) = sieve isUnit isConflict evals
     mutuals = mutualConflicts units
 
@@ -111,26 +115,64 @@ analyze evals
 fullAnalysis :: Database -> Assignment -> Analysis
 fullAnalysis db a = analyze $ map (evaluate a) (allClauses db)
 
+newtype Same = Same Eval
+
+instance Eq Same where
+  Same x == Same y = fromUnit x == fromUnit y
+
 -- Assuming the argument list is filtered for @Unit@.
-uniqueLiterals :: [Eval] -> [Lit]
-uniqueLiterals = nub . map fromUnit
+-- This step potentially involves making an arbitrary choice.
+uniqueUnits :: [Eval] -> [Eval]
+uniqueUnits = map unwrap . nub . map Same
+  where unwrap (Same u) = u
 
 -- Nested list of @Eval@ just to avoid needless flattening.
+
 data Propagated = Propagated Analysis Assignment [[Eval]] deriving Show
 
+-- Every step adds a layer of nodes, building a directed acyclic graph.
 recurse :: Database -> Assignment -> [Lit] -> [[Eval]] -> Propagated
 recurse db a xs acc =
   case analysis of
     Units [] -> Propagated analysis aa acc
-    Units units -> recurse db aa (uniqueLiterals units) (evals:acc)
+    Units units -> let uniqs = uniqueUnits units  -- arbitrary
+                       layer = map fromUnit uniqs
+                   in recurse db aa layer (uniqs:acc)
     Conflicts _ _ -> Propagated analysis aa acc
   where
     aa = extend a xs
-    evals = evaluations db aa xs
-    analysis = analyze evals
+    analysis = analyze (evaluations db aa xs)
 
-propagate :: Database -> Assignment -> Lit -> Propagated
-propagate db a x = recurse db a [x] []
+
+data Summary = NoConflict | ConflictClauses [Clause] deriving Show
+
+data Implied = Implied Clause Lit deriving Show
+
+data Result = Result Summary Assignment [[Implied]] deriving Show
+
+cast :: Eval -> Implied
+cast (Unit c x) = Implied c x
+
+-- split into an implication and an ordinary conflict
+breakSymmetry :: Mutual -> (Implied, Clause)
+breakSymmetry (Mutual a b) = (cast a, antecedent b)
+
+summarize :: Analysis -> (Summary, [Implied])
+summarize (Units []) = (NoConflict, [])
+summarize (Conflicts direct mutuals) = (ConflictClauses clauses, implieds)
+  where
+    (implieds, conflicts) = unzip (map breakSymmetry mutuals)
+    clauses = direct ++ conflicts
+
+consolidate :: Propagated -> Result
+consolidate (Propagated analysis a nested) = Result summary a implieds
+  where
+    (summary, fromMutuals) = summarize analysis
+    casted = map (map cast) nested
+    implieds = consIf (not . null) fromMutuals casted
+
+propagate :: Database -> Assignment -> Lit -> Result
+propagate db a x = consolidate $ recurse db a [x] []
 
 
 test_unitPropagation :: Bool
@@ -138,6 +180,7 @@ test_unitPropagation = test_evaluate
   && test_contradictions
   && test_mutualConflicts
   && test_analyze
+  && test_uniques
 
 test_evaluate :: Bool
 test_evaluate =
@@ -156,6 +199,14 @@ test_contradictions =
   && check [-2,-1,1,2,2,2,3] [2,1]
   where
     check input output = contradictions (map Lit input) == map Var output
+
+test_uniques :: Bool
+test_uniques = uniqueUnits (uniq ++ dups) == uniq
+  where
+    wrap i = Clause [Lit i]
+    [a,b,c,d] = map wrap [1,2,3,4]
+    uniq = [Unit a (Lit 5), Unit a (Lit 3), Unit b (Lit (-5))]
+    dups = [Unit c (Lit 5), Unit d (Lit 5), Unit d (Lit 3)]
 
 -- Fake but good enough to assert that the correct clauses are selected.
 testClauses :: [Clause]

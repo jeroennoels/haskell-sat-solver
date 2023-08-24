@@ -1,5 +1,9 @@
 module Util where
 
+consIf :: (a -> Bool) -> a -> [a] -> [a]
+consIf p x xs | p x = x : xs
+              | otherwise = xs
+
 singleton :: [a] -> a
 singleton [x] = x
 

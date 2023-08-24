@@ -7,6 +7,7 @@ import Database
 import Global
 import Assignment
 import UnitPropagation
+import ConflictAnalysis
 
 main :: IO ()
 main = fmap head getArgs >>=  run
@@ -17,6 +18,8 @@ run "read" = readDatabase >>= print
 run "go" = readDatabase >>= print . go
 
 go db = propagate db emptyAssignment (Lit 3)
+
+quux a lit db = propagate db a lit
 
 readDatabase :: IO Database
 readDatabase = makeDatabase `fmap` readCNF "./local/problem.cnf"
