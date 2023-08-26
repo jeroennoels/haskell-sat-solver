@@ -4,7 +4,9 @@ module Global where
 optimized :: Bool
 optimized = False
 
-newtype Var = Var Int deriving (Show, Eq)
+type RandomInt = Int
+
+newtype Var = Var Int deriving (Show, Eq, Ord)
 
 newtype Lit = Lit Int deriving (Show, Eq)
 

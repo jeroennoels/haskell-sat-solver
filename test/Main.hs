@@ -17,7 +17,7 @@ run "test" = runTests
 run "read" = readDatabase >>= print
 run "go" = readDatabase >>= print . go
 
-go db = propagate db emptyAssignment (Lit 3)
+go db = propagate db (emptyAssignment (allVariables db)) (Lit 3)
 
 quux a lit db = propagate db a lit
 

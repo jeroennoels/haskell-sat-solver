@@ -1,8 +1,9 @@
 module Database (
   Database, makeClauses, makeDatabase,
-  allClauses, clausesWith,
+  allClauses, clausesWith, allVariables,
   test_database) where
 
+import Data.List (nub)
 import Global
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as M
@@ -10,11 +11,12 @@ import qualified Data.IntMap.Strict as M
 -- all clauses that contain a given literal
 type Index = IntMap [Clause]
 
-data Database = Database [Clause] Index
+data Database = Database [Clause] Index [Var]
 
 instance Show Database where
-  show (Database _ index) = let n = M.size index in
-    "clause database for " ++ show n ++ " literals"
+  show (Database _ index vars) =
+    "clause database for " ++ show (M.size index) ++
+    " literals and " ++ show (length vars) ++ " variables"
 
 cons :: a -> Maybe [a] -> Maybe [a]
 cons a (Just as) = Just (a:as)
@@ -33,16 +35,21 @@ makeClauses :: [[Int]] -> [Clause]
 makeClauses = map (Clause . map Lit)
 
 makeDatabase :: [[Int]] -> Database
-makeDatabase prims = Database clauses (indexAll clauses)
+makeDatabase prims = Database clauses index variables
   where
+    index = indexAll clauses
     clauses = makeClauses prims
+    literals = map Lit (M.keys index)
+    variables = nub $ map variable literals
 
 allClauses :: Database -> [Clause]
-allClauses (Database clauses _) = clauses
+allClauses (Database clauses _ _) = clauses
 
 clausesWith :: Database -> Lit -> [Clause]
-clausesWith (Database _ index) (Lit i) = index M.! i
+clausesWith (Database _ index _) (Lit i) = index M.! i
 
+allVariables :: Database -> [Var]
+allVariables (Database _ _ vars) = vars
 
 test_database :: Bool
 test_database = length (allClauses db) == 3

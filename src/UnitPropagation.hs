@@ -183,8 +183,8 @@ consolidate (Propagated analysis a nested) = Result summary a implieds
   where
     summary = summarize analysis
     casted = map (map cast) nested
-    mutual = mapMaybe impliedFromMutual (conflictDetails summary)
-    implieds = consIf (not . null) mutual casted
+    extras = mapMaybe impliedFromMutual (conflictDetails summary)
+    implieds = consIf (not . null) extras casted
 
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x = consolidate $ recurse db a [x] []
@@ -204,8 +204,9 @@ test_evaluate =
   && isConflict (eval [-4,5,-2])
   && isUnit (eval [-2,5,9])
   where
+    empty = emptyAssignment (map Var [1..9])
+    a = extend empty $ map Lit [1,2,3,4,-5]
     eval = evaluate a . Clause . map Lit
-    a = extend emptyAssignment $ map Lit [1,2,3,4,-5]
 
 test_contradictions :: Bool
 test_contradictions =
