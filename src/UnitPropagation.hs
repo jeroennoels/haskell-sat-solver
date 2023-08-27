@@ -4,7 +4,7 @@ module UnitPropagation (
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
-import Data.List (nub, splitAt, partition)
+import Data.List (nub, splitAt, partition, (\\))
 import Util (consIf, sieve, singleton)
 import Global
 import Database
@@ -147,6 +147,9 @@ data Implied = Implied Clause Lit deriving Show
 cast :: Eval -> Implied
 cast (Unit c x) = Implied c x
 
+impliedLiteral :: Implied -> Lit
+impliedLiteral (Implied _ x) = x
+
 -- This amount of detail is not needed to make it work,
 -- but we keep it for debugging or statistics.
 data ConflictDetail = Direct Clause
@@ -202,12 +205,15 @@ impliedFromMutual (FromMutual i _) = Just i
 impliedFromMutual _ = Nothing
 
 consolidate :: Propagated -> Result
-consolidate (Propagated analysis a nested) = Result summary a implieds
+consolidate (Propagated analysis a nested) = Result summary aa implieds
   where
     summary = summarize analysis
     casted = map (map cast) nested
+    -- only when there are mutual conflicts
     extras = mapMaybe impliedFromMutual (conflictDetails summary)
     implieds = consIf (not . null) extras casted
+    -- include implied literals from mutual conflicts in the assignment
+    aa = if null extras then a else extend a (map impliedLiteral extras)
 
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x
@@ -226,11 +232,26 @@ fullEvaluation db a = map (evaluate a) (allClauses db)
 
 assertFixpoint :: Database -> Result -> Result
 assertFixpoint db result@(Result summary a _)
-  | isConflicting summary = result  -- skip assertion (complicated)
-  | null units = result  -- no conflict
-  | otherwise = error $ "assertFixpoint: " ++ show units
+  | isConflicting summary && checkConflict = result
+  | null units && null direct && null clausesResult = result
+  | otherwise = error "assertFixpoint"
   where
-    units = filter isUnit (fullEvaluation db a)
+    evals = fullEvaluation db a
+    units = filter isUnit evals
+    direct = filter isConflict evals
+    clausesResult = map conflictClause (conflictDetails summary)
+    clausesVerify = map antecedent (direct ++ units)
+    -- Check some expectations in case of conflict.
+    -- The assymetry is caused by the fact that our unit propagation halts as
+    -- soon as conflicts are found, where as full evaluation can go beyond.
+    -- And also because mutual conflicts can involve more than two clauses,
+    -- but we keep only two.
+    empty = null clausesResult
+    unique = nub clausesResult == clausesResult
+    subset = null (clausesResult \\ clausesVerify)
+    checkConflict = not empty && unique && subset
+
+
 
 test_unitPropagation :: Bool
 test_unitPropagation = test_evaluate

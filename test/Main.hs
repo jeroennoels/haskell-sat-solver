@@ -25,7 +25,7 @@ run "test" = runTests
 run "read" = readDatabase >>= print
 run "go" = readDatabase >>= print . go
 
-go db = drive (randomInts 0) db
+go db = map (length . testDrive db) [0..1500]
 
 readDatabase :: IO Database
 readDatabase = makeDatabase `fmap` readCNF "./local/problem.cnf"

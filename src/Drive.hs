@@ -22,4 +22,4 @@ recurse (rand:rands) db a
     result@(Result summary aa implieds) = propagate db a decision
 
 
-test db seed = analyzeConflict $ drive (randomInts seed) db
+testDrive db seed = analyzeConflict $ drive (randomInts seed) db
