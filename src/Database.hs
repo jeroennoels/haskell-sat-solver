@@ -51,6 +51,11 @@ clausesWith (Database _ index _) (Lit i) = index M.! i
 allVariables :: Database -> [Var]
 allVariables (Database _ _ vars) = vars
 
+
+--------------------------
+-- tests and assertions --
+--------------------------
+
 test_database :: Bool
 test_database = length (allClauses db) == 3
   && check (clausesWith db (Lit 1)) [c,a]

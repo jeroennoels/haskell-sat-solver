@@ -35,6 +35,10 @@ readCNF :: String -> IO [[Int]]
 readCNF filepath = linesToClauses `fmap` readLines filepath
 
 
+--------------------------
+-- tests and assertions --
+--------------------------
+
 test_linesToClauses :: Bool
 test_linesToClauses = clauses == [[48,-58,63], [-58,63]]
   where

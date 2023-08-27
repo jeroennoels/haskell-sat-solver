@@ -144,9 +144,14 @@ recurse db a xs acc =
     aa = extend a xs
     analysis = analyze (evaluations db aa xs)
 
-
+-- The @Unit@ case of @Eval@ is all we need outside of this module.
 data Implied = Implied Clause Lit deriving Show
 
+cast :: Eval -> Implied
+cast (Unit c x) = Implied c x
+
+-- This amount of detail is not needed to make it work,
+-- but we keep it for debugging or statistics.
 data ConflictDetail = Direct Clause
                     | FromMutual Implied Clause
                     deriving Show
@@ -154,11 +159,9 @@ data ConflictDetail = Direct Clause
 data Summary = NoConflict | Conflicting [ConflictDetail]
   deriving Show
 
+-- This is the main type exported by this module.
 data Result = Result Summary Assignment [[Implied]]
   deriving Show
-
-cast :: Eval -> Implied
-cast (Unit c x) = Implied c x
 
 -- split into an implication and an ordinary conflict
 breakSymmetry :: Mutual -> ConflictDetail
@@ -189,6 +192,10 @@ consolidate (Propagated analysis a nested) = Result summary a implieds
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x = consolidate $ recurse db a [x] []
 
+
+--------------------------
+-- tests and assertions --
+--------------------------
 
 test_unitPropagation :: Bool
 test_unitPropagation = test_evaluate

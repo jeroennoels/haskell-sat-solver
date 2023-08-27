@@ -11,6 +11,8 @@ import qualified Data.IntSet as Fast
 import Data.Set (Set)
 import qualified Data.Set as Slow
 
+-- The first set tracks assigned literals, the second one tracks unassigned
+-- variables. We need it to efficiently pick a random unassigned variable.
 data Assignment = Assignment IntSet (Set Int) deriving Show
 
 emptyAssignment :: [Var] -> Assignment
@@ -51,7 +53,10 @@ extend
     safe x = assertAssigned x . flip assign x . assertNotAssigned x
 
 
--- for tesing
+--------------------------
+-- tests and assertions --
+--------------------------
+
 verify :: Assignment -> [Var]
 verify (Assignment a b)
   | disjoint = sort (as ++ bs)
