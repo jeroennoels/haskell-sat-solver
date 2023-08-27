@@ -5,6 +5,8 @@ import Global
 import Assignment
 import Database
 import UnitPropagation
+import ConflictAnalysis
+
 
 drive :: [RandomInt] -> Database -> Result
 drive rands db = recurse rands db (emptyAssignment db)
@@ -19,4 +21,5 @@ recurse (rand:rands) db a
     decision = makeLiteral var bit
     result@(Result summary aa implieds) = propagate db a decision
 
-test db seed = drive (randomInts seed) db
+
+test db seed = analyzeConflict $ drive (randomInts seed) db

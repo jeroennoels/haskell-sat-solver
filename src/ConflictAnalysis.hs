@@ -1,8 +1,10 @@
-module ConflictAnalysis where
+module ConflictAnalysis (analyzeConflict) where
 
 import Global
 import Assignment
 import UnitPropagation
 
-analyze :: Result -> ()
-analyze (Result summary assignment implieds) = undefined
+analyzeConflict :: Result -> [Clause]
+analyzeConflict (Result (Conflicting details) assignment implieds) = conflicts
+  where
+    conflicts = map conflictClause details

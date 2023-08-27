@@ -1,6 +1,6 @@
 module UnitPropagation (
   ConflictDetail(..), Implied(..), Summary(..), Result(..),
-  propagate, isConflicting, showStatistics, conflictClause,
+  propagate, isConflicting, conflictClause, showStatistics,
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
