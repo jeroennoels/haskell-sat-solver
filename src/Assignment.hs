@@ -1,6 +1,6 @@
 module Assignment (
   Assignment,
-  emptyAssignment, isAssigned, extend,
+  makeEmptyAssignment, isAssigned, extend,
   randomUnassignedVariable, isComplete,
   test_assignment) where
 
@@ -15,8 +15,8 @@ import qualified Data.Set as Slow
 -- variables. We need it to efficiently pick a random unassigned variable.
 data Assignment = Assignment IntSet (Set Int) deriving Show
 
-emptyAssignment :: [Var] -> Assignment
-emptyAssignment allVariables = Assignment Fast.empty (Slow.fromList is)
+makeEmptyAssignment :: [Var] -> Assignment
+makeEmptyAssignment allVariables = Assignment Fast.empty (Slow.fromList is)
   where
     unwrap (Var i) = i
     is = map unwrap allVariables
@@ -100,7 +100,7 @@ test_assignment = isAssigned a (Lit 4)
   && randomUnassignedVariable 0 b `elem` map Var [7,-8,9]
   where
     allVariables = map Var [1..9]
-    empty = emptyAssignment allVariables
+    empty = makeEmptyAssignment allVariables
     a = extend empty (map Lit [1..5])
     b = extend a [Lit (-6)]
     c = extend b (map Lit [7,-8,9])

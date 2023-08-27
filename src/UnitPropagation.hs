@@ -211,7 +211,7 @@ test_evaluate =
   && isConflict (eval [-4,5,-2])
   && isUnit (eval [-2,5,9])
   where
-    empty = emptyAssignment (map Var [1..9])
+    empty = makeEmptyAssignment (map Var [1..9])
     a = extend empty $ map Lit [1,2,3,4,-5]
     eval = evaluate a . Clause . map Lit
 

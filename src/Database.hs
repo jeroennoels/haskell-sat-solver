@@ -1,7 +1,9 @@
 module Database (
   Database, makeClauses, makeDatabase,
-  allClauses, clausesWith, allVariables,
+  allClauses, clausesWith, emptyAssignment,
   test_database) where
+
+import Assignment (Assignment, makeEmptyAssignment, randomUnassignedVariable)
 
 import Data.List (nub)
 import Global
@@ -11,12 +13,11 @@ import qualified Data.IntMap.Strict as M
 -- all clauses that contain a given literal
 type Index = IntMap [Clause]
 
-data Database = Database [Clause] Index [Var]
+data Database = Database [Clause] Index Assignment
 
 instance Show Database where
   show (Database _ index vars) =
-    "clause database for " ++ show (M.size index) ++
-    " literals and " ++ show (length vars) ++ " variables"
+    "clause database for " ++ show (M.size index) ++ " literals"
 
 cons :: a -> Maybe [a] -> Maybe [a]
 cons a (Just as) = Just (a:as)
@@ -35,12 +36,12 @@ makeClauses :: [[Int]] -> [Clause]
 makeClauses = map (Clause . map Lit)
 
 makeDatabase :: [[Int]] -> Database
-makeDatabase prims = Database clauses index variables
+makeDatabase prims = Database clauses index empty
   where
     index = indexAll clauses
     clauses = makeClauses prims
     literals = map Lit (M.keys index)
-    variables = nub $ map variable literals
+    empty = makeEmptyAssignment (map variable literals)
 
 allClauses :: Database -> [Clause]
 allClauses (Database clauses _ _) = clauses
@@ -48,8 +49,8 @@ allClauses (Database clauses _ _) = clauses
 clausesWith :: Database -> Lit -> [Clause]
 clausesWith (Database _ index _) (Lit i) = index M.! i
 
-allVariables :: Database -> [Var]
-allVariables (Database _ _ vars) = vars
+emptyAssignment :: Database -> Assignment
+emptyAssignment (Database _ _ empty) = empty
 
 
 --------------------------
@@ -61,6 +62,7 @@ test_database = length (allClauses db) == 3
   && check (clausesWith db (Lit 1)) [c,a]
   && check (clausesWith db (Lit 4)) [c,b]
   && check (clausesWith db (Lit (-6))) [c]
+  && randomUnassignedVariable 0 (emptyAssignment db) `elem` map Var [1..6]
   where
     a = [1,-2,3]
     b = [4,5]
