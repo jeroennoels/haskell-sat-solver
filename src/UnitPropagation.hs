@@ -179,6 +179,7 @@ showStatistics (Result summary a _) = "conflict: " ++
   show (assignmentCount a)
 
 -- This is the main type exported by this module.
+
 data Result = Result Summary Assignment [[Implied]]
   deriving Show
 
@@ -204,6 +205,9 @@ impliedFromMutual :: ConflictDetail -> Maybe Implied
 impliedFromMutual (FromMutual i _) = Just i
 impliedFromMutual _ = Nothing
 
+-- In case of conflict the assignment includes the conflict.
+-- This is by design (see also the function @recurse@ above).
+-- But maybe I will change this.
 consolidate :: Propagated -> Result
 consolidate (Propagated analysis a nested) = Result summary aa implieds
   where
@@ -242,7 +246,7 @@ assertFixpoint db result@(Result summary a _)
     clausesResult = map conflictClause (conflictDetails summary)
     clausesVerify = map antecedent (direct ++ units)
     -- Check some expectations in case of conflict.
-    -- The assymetry is caused by the fact that our unit propagation halts as
+    -- The asymmetry is caused by the fact that our unit propagation halts as
     -- soon as conflicts are found, where as full evaluation can go beyond.
     -- And also because mutual conflicts can involve more than two clauses,
     -- but we keep only two.
@@ -250,8 +254,6 @@ assertFixpoint db result@(Result summary a _)
     unique = nub clausesResult == clausesResult
     subset = null (clausesResult \\ clausesVerify)
     checkConflict = not empty && unique && subset
-
-
 
 test_unitPropagation :: Bool
 test_unitPropagation = test_evaluate

@@ -5,6 +5,6 @@ import Assignment
 import UnitPropagation
 
 analyzeConflict :: Result -> [Clause]
-analyzeConflict (Result (Conflicting details) assignment implieds) = conflicts
+analyzeConflict (Result (Conflicting details) _ implieds) = conflicts
   where
     conflicts = map conflictClause details
