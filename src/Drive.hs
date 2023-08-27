@@ -2,8 +2,8 @@ module Drive where
 
 import RandomInt
 import Global
-import Assignment
-import Database
+import Assignment (Assignment, isComplete, randomUnassignedVariable)
+import Database (Database, emptyAssignment)
 import UnitPropagation
 import ConflictAnalysis
 
