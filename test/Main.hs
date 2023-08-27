@@ -7,23 +7,25 @@ import Database
 import Global
 import Assignment
 import UnitPropagation
+import RandomInt
 import Drive
 import ConflictAnalysis
 
 main :: IO ()
-main = fmap head getArgs >>=  run
+main = warn >> fmap head getArgs >>= run
+
+warn :: IO ()
+warn = putStrLn $
+  if optimized
+  then "optimized = true"
+  else "[WARNING] Global.optimized = false"
 
 run :: String -> IO ()
 run "test" = runTests
 run "read" = readDatabase >>= print
 run "go" = readDatabase >>= print . go
 
-fakeRandoms :: [RandomInt]
-fakeRandoms = [4..]
-
-go db = drive fakeRandoms db
-
-quux a lit db = propagate db a lit
+go db = drive (randomInts 0) db
 
 readDatabase :: IO Database
 readDatabase = makeDatabase `fmap` readCNF "./local/problem.cnf"

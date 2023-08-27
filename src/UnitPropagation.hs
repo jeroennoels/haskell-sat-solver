@@ -112,9 +112,6 @@ analyze evals
     (units, conflicts) = sieve isUnit isConflict evals
     mutuals = mutualConflicts units
 
--- For verification only.
-fullAnalysis :: Database -> Assignment -> Analysis
-fullAnalysis db a = analyze $ map (evaluate a) (allClauses db)
 
 newtype Same = Same Eval
 
@@ -213,12 +210,27 @@ consolidate (Propagated analysis a nested) = Result summary a implieds
     implieds = consIf (not . null) extras casted
 
 propagate :: Database -> Assignment -> Lit -> Result
-propagate db a x = consolidate $ recurse db a [x] []
+propagate db a x
+  | optimized = result
+  | otherwise = assertFixpoint db result
+  where
+    result = consolidate $ recurse db a [x] []
 
 
 --------------------------
 -- tests and assertions --
 --------------------------
+
+fullEvaluation :: Database -> Assignment -> [Eval]
+fullEvaluation db a = map (evaluate a) (allClauses db)
+
+assertFixpoint :: Database -> Result -> Result
+assertFixpoint db result@(Result summary a _)
+  | isConflicting summary = result  -- skip assertion (complicated)
+  | null units = result  -- no conflict
+  | otherwise = error $ "assertFixpoint: " ++ show units
+  where
+    units = filter isUnit (fullEvaluation db a)
 
 test_unitPropagation :: Bool
 test_unitPropagation = test_evaluate
