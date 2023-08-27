@@ -18,5 +18,9 @@ variable (Lit i) = Var (abs i)
 negation :: Lit -> Lit
 negation (Lit i) = Lit (-i)
 
+makeLiteral :: Var -> Bool -> Lit
+makeLiteral (Var i) True = Lit i
+makeLiteral (Var i) False = Lit (-i)
+
 literals :: Clause -> [Lit]
 literals (Clause xs) = xs

@@ -1,10 +1,10 @@
 module UnitPropagation (
   ConflictDetail(..), Implied(..), Summary(..), Result(..),
-  propagate,
+  propagate, isConflicting, showStatistics, conflictClause,
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
-import Data.List (nub, splitAt)
+import Data.List (nub, splitAt, partition)
 import Util (consIf, sieve, singleton)
 import Global
 import Database
@@ -156,12 +156,35 @@ data ConflictDetail = Direct Clause
                     | FromMutual Implied Clause
                     deriving Show
 
+conflictClause :: ConflictDetail -> Clause
+conflictClause (Direct c) = c
+conflictClause (FromMutual _ c) = c
+
+isDirect :: ConflictDetail -> Bool
+isDirect (Direct _) = True
+isDirect _ = False
+
 data Summary = NoConflict | Conflicting [ConflictDetail]
   deriving Show
+
+conflictCount :: Summary -> (Int, Int)
+conflictCount NoConflict = (0, 0)
+conflictCount (Conflicting details) = (length ds, length ms)
+  where
+    (ds, ms) = partition isDirect details
+
+showStatistics :: Result -> String
+showStatistics (Result summary a _) = "conflict: " ++
+  show (conflictCount summary) ++ ", assignment: " ++
+  show (assignmentCount a)
 
 -- This is the main type exported by this module.
 data Result = Result Summary Assignment [[Implied]]
   deriving Show
+
+isConflicting :: Summary -> Bool
+isConflicting NoConflict = False
+isConflicting _ = True
 
 -- split into an implication and an ordinary conflict
 breakSymmetry :: Mutual -> ConflictDetail

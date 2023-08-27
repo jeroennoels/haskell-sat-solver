@@ -7,6 +7,7 @@ import Database
 import Global
 import Assignment
 import UnitPropagation
+import Drive
 import ConflictAnalysis
 
 main :: IO ()
@@ -17,7 +18,10 @@ run "test" = runTests
 run "read" = readDatabase >>= print
 run "go" = readDatabase >>= print . go
 
-go db = propagate db (emptyAssignment db) (Lit 3)
+fakeRandoms :: [RandomInt]
+fakeRandoms = [4..]
+
+go db = drive fakeRandoms db
 
 quux a lit db = propagate db a lit
 
