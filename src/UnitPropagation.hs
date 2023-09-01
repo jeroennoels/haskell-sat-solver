@@ -1,6 +1,7 @@
 module UnitPropagation (
   ConflictDetail(..), Implied(..), Summary(..), Result(..),
-  propagate, isConflicting, conflictClause, showStatistics,
+  propagate, isConflicting, conflictClause,
+  showStatistics,
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
@@ -35,9 +36,9 @@ fromUnit :: Eval -> Lit
 fromUnit (Unit _ x) = x
 
 -- Assuming @Unit@ or @Conflict@ argument.
-antecedent :: Eval -> Clause
-antecedent (Unit clause _) = clause
-antecedent (Conflict clause) = clause
+evalutatedClause :: Eval -> Clause
+evalutatedClause (Unit clause _) = clause
+evalutatedClause (Conflict clause) = clause
 
 evaluate :: Assignment -> Clause -> Eval
 evaluate a clause
@@ -106,7 +107,7 @@ mutualConflicts units = map (mutualConflict units) vars
 analyze :: [Eval] -> Analysis
 analyze evals
   | null conflicts && null mutuals = Units units
-  | otherwise = Conflicts (map antecedent conflicts) mutuals
+  | otherwise = Conflicts (map evalutatedClause conflicts) mutuals
   where
     -- Unresolved clauses and satisfied clauses are ignored.
     (units, conflicts) = sieve isUnit isConflict evals
@@ -189,7 +190,7 @@ isConflicting _ = True
 
 -- split into an implication and an ordinary conflict
 breakSymmetry :: Mutual -> ConflictDetail
-breakSymmetry (Mutual a b) = FromMutual (cast a) (antecedent b)
+breakSymmetry (Mutual a b) = FromMutual (cast a) (evalutatedClause b)
 
 summarize :: Analysis -> Summary
 summarize (Units []) = NoConflict
@@ -244,7 +245,7 @@ assertFixpoint db result@(Result summary a _)
     units = filter isUnit evals
     direct = filter isConflict evals
     clausesResult = map conflictClause (conflictDetails summary)
-    clausesVerify = map antecedent (direct ++ units)
+    clausesVerify = map evalutatedClause (direct ++ units)
     -- Check some expectations in case of conflict.
     -- The asymmetry is caused by the fact that our unit propagation halts as
     -- soon as conflicts are found, where as full evaluation can go beyond.
@@ -306,7 +307,7 @@ test_analyze =
   -- order depends on implementation details, but good enough for now
   reverse output == take 5 (tail evals)
   && conflict == b
-  && antecedent mutual2 == c && mutual1 == evals !! 3
+  && evalutatedClause mutual2 == c && mutual1 == evals !! 3
   where
     (as, (b:c:_)) = splitAt 5 testClauses
     xs = map Lit [1..5]

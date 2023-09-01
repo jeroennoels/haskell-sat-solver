@@ -32,6 +32,7 @@ recurse (rand:rands) db a
 testDrive :: Database -> Int -> String
 testDrive db seed
   | satisfiable destination = "satisfiable"
-  | otherwise = show (length $ analyzeConflict destination)
+  | otherwise = show lastDecision ++ " " ++ analyzeConflict destination
   where
     destination = drive (randomInts seed) db
+    Conflict lastDecision _ _ = destination
