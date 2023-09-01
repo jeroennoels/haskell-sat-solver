@@ -1,5 +1,5 @@
 module ConflictAnalysis (
-  Destination(..), Learn(..), satisfiable,
+  Destination(..), Learn(..),
   analyzeConflict) where
 
 import Global
@@ -14,15 +14,11 @@ import Data.IntMap (IntMap)
 import qualified Data.IntMap as M
 
 
-data Destination = Sat Assignment | Conflict Lit [Clause] [[Implied]]
+data Destination = Conflict Lit [Clause] [[Implied]]
   deriving Show
 
 -- Separate the UIP from the rest.
 data Learn = Learn Lit [Lit] deriving Show
-
-satisfiable :: Destination -> Bool
-satisfiable (Sat _) = True
-satisfiable _ = False
 
 analyzeConflict :: Destination -> Learn
 analyzeConflict (Conflict lastDecision conflicts implieds)
