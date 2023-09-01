@@ -23,18 +23,27 @@ satisfiable _ = False
 analyzeConflict :: Destination -> String
 analyzeConflict (Conflict lastDecision conflicts implieds)
   | optimized = show index
-  | verifyIndex index = "verified"
+  | verifyIndex index = "verified " ++ show graph
   | otherwise = error "analyzeConflict"
   where
     flatten = concat (reverse implieds)
-    index = buildIndex lastDecision (buildCurrentSet flatten) flatten
+    set = buildCurrentSet lastDecision flatten
+    index = buildIndex set flatten
+    conflict = antecedentOfConflict set $ head conflicts -- only use the first
+    graph = buildImplicationGraph lastDecision index conflict
+
+antecedentOfConflict :: IntSet -> Clause -> [Lit]
+antecedentOfConflict set (Clause xs) = filter keep (map negation xs)
+  where
+    keep (Lit i) = S.member i set
 
 -- This set is used to quickly distinguish the current set of implied
 -- literals from previously assigned literals. The former become the
 -- vertices of the implication graph. The latter will contribute to
 -- the learned clause.
-buildCurrentSet :: [Implied] -> IntSet
-buildCurrentSet = S.fromList . map extract
+-- We explicitly add the last decision literal to this set.
+buildCurrentSet :: Lit -> [Implied] -> IntSet
+buildCurrentSet (Lit j) implieds = S.fromList $ j : map extract implieds
   where
     extract (Implied _ (Lit i)) = i
 
@@ -50,18 +59,46 @@ consequent (Implied _ x) = x
 -- Keep a reference to the @Implied@ for assertions and debugging.
 data Split = Split [Lit] [Lit] Implied deriving Show
 
-pair :: Lit -> IntSet -> Implied -> (Int, Split)
-pair lastDecision set implied = (key, Split young old implied)
+pair :: IntSet -> Implied -> (Int, Split)
+pair set implied = (key, Split young old implied)
   where
     Lit key = consequent implied
-    isYoung x | x == lastDecision = True
     isYoung (Lit i) = S.member i set
     (young, old) = partition isYoung (antecedent implied)
 
 -- index by consequent
-buildIndex :: Lit -> IntSet -> [Implied] -> IntMap Split
-buildIndex lastDecision set = M.fromList . map (pair lastDecision set)
+buildIndex :: IntSet -> [Implied] -> IntMap Split
+buildIndex set = M.fromList . map (pair set)
 
+
+data Edge = Edge Lit Lit deriving Show
+
+edgeTo :: Lit -> Lit -> Edge
+edgeTo = flip Edge
+
+requires :: Lit -> IntMap Split -> Lit -> ([Lit], [Edge])
+requires lastDecision index implied@(Lit i)
+  | implied == lastDecision = ([], [])
+  | otherwise = (young, map (edgeTo implied) young)
+  where
+    Split young _ _ = index M.! i
+
+requires' :: Lit -> IntMap Split -> [Lit] -> ([Lit], [Edge])
+requires' lastDecision index ys = (concat as, concat bs)
+  where
+    (as, bs) = unzip $ map (requires lastDecision index) ys
+
+step :: Lit -> IntMap Split -> ([Lit], [Edge]) -> ([Lit], [Edge])
+step lastDecision index (ys, acc) = (xs, edges ++ acc)
+  where
+    (xs, edges) = requires' lastDecision index ys
+
+buildImplicationGraph :: Lit -> IntMap Split -> [Lit] -> [Edge]
+buildImplicationGraph lastDecision index xs = snd first
+  where
+    steps = iterate (step lastDecision index) (xs, [])
+    done = null . fst
+    first = head (filter done steps)
 
 
 --------------------------
