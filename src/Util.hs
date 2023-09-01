@@ -1,6 +1,9 @@
 module Util where
 
-import Data.List ((\\))
+import Data.List (nub, (\\))
+
+unique :: Eq a => [a] -> Bool
+unique x = nub x == x
 
 sameIgnoringOrder :: Eq a => [a] -> [a] -> Bool
 sameIgnoringOrder x y = null (x \\ y) && null (y \\ x)

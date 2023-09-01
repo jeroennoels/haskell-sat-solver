@@ -1,12 +1,13 @@
 module ConflictAnalysis (
-  Destination(..), satisfiable,
+  Destination(..), Learn(..), satisfiable,
   analyzeConflict) where
 
 import Global
-import Util (sameIgnoringOrder)
+import Graph
+import Util (sameIgnoringOrder, unique)
 import Assignment (Assignment)
 import UnitPropagation (Implied (Implied))
-import Data.List (partition)
+import Data.List (partition, nub)
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as S
 import Data.IntMap (IntMap)
@@ -16,14 +17,17 @@ import qualified Data.IntMap as M
 data Destination = Sat Assignment | Conflict Lit [Clause] [[Implied]]
   deriving Show
 
+-- Separate the UIP from the rest.
+data Learn = Learn Lit [Lit] deriving Show
+
 satisfiable :: Destination -> Bool
 satisfiable (Sat _) = True
 satisfiable _ = False
 
-analyzeConflict :: Destination -> String
+analyzeConflict :: Destination -> Learn
 analyzeConflict (Conflict lastDecision conflicts implieds)
-  | optimized = show index
-  | verifyIndex index = "verified " ++ show graph
+  | optimized = learn
+  | verifyIndex index && assertSize = learn
   | otherwise = error "analyzeConflict"
   where
     flatten = concat (reverse implieds)
@@ -31,6 +35,10 @@ analyzeConflict (Conflict lastDecision conflicts implieds)
     index = buildIndex set flatten
     conflict = antecedentOfConflict set $ head conflicts -- only use the first
     graph = buildImplicationGraph lastDecision index conflict
+    learn = learnedClause lastDecision index graph
+    assertSize = let (a,b,c) = (length flatten, M.size index, S.size set)
+                 in a == b && c == a+1
+
 
 antecedentOfConflict :: IntSet -> Clause -> [Lit]
 antecedentOfConflict set (Clause xs) = filter keep (map negation xs)
@@ -70,35 +78,56 @@ pair set implied = (key, Split young old implied)
 buildIndex :: IntSet -> [Implied] -> IntMap Split
 buildIndex set = M.fromList . map (pair set)
 
+data V = Vertex Lit | Kappa deriving (Eq, Show)
 
-data Edge = Edge Lit Lit deriving Show
+edgeTo :: Lit -> Lit -> Edge V
+edgeTo b a = Edge (Vertex a) (Vertex b)
 
-edgeTo :: Lit -> Lit -> Edge
-edgeTo = flip Edge
+edgeToKappa :: Lit -> Edge V
+edgeToKappa a = Edge (Vertex a) Kappa
 
-requires :: Lit -> IntMap Split -> Lit -> ([Lit], [Edge])
+requires :: Lit -> IntMap Split -> Lit -> ([Lit], [Edge V])
 requires lastDecision index implied@(Lit i)
   | implied == lastDecision = ([], [])
   | otherwise = (young, map (edgeTo implied) young)
   where
     Split young _ _ = index M.! i
 
-requires' :: Lit -> IntMap Split -> [Lit] -> ([Lit], [Edge])
+requires' :: Lit -> IntMap Split -> [Lit] -> ([Lit], [Edge V])
 requires' lastDecision index ys = (concat as, concat bs)
   where
     (as, bs) = unzip $ map (requires lastDecision index) ys
 
-step :: Lit -> IntMap Split -> ([Lit], [Edge]) -> ([Lit], [Edge])
+step :: Lit -> IntMap Split -> ([Lit], [Edge V]) -> ([Lit], [Edge V])
 step lastDecision index (ys, acc) = (xs, edges ++ acc)
   where
     (xs, edges) = requires' lastDecision index ys
 
-buildImplicationGraph :: Lit -> IntMap Split -> [Lit] -> [Edge]
+buildImplicationGraph :: Lit -> IntMap Split -> [Lit] -> [Edge V]
 buildImplicationGraph lastDecision index xs = snd first
   where
-    steps = iterate (step lastDecision index) (xs, [])
+    start = (xs, map edgeToKappa xs)
+    steps = iterate (step lastDecision index) start
     done = null . fst
     first = head (filter done steps)
+
+oldGeneration :: IntMap Split -> V -> [Lit]
+oldGeneration _ Kappa = []
+oldGeneration index (Vertex (Lit i)) = old
+  where
+    Split _ old _ = index M.! i
+
+learnedClause :: Lit -> IntMap Split -> [Edge V] -> Learn
+learnedClause lastDecision index graph
+  | optimized = learn
+  | unique vertices = learn
+  | otherwise = error "learnedClause"
+  where
+    uip = lastDecision  -- todo
+    vertices = future graph [Vertex uip]
+    sufficientForConflict = concatMap (oldGeneration index) vertices
+    learn = Learn uip $ map negation $ nub sufficientForConflict
+
 
 
 --------------------------
