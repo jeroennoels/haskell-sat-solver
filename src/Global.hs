@@ -8,7 +8,7 @@ type RandomInt = Int
 
 newtype Var = Var Int deriving (Show, Eq, Ord)
 
-newtype Lit = Lit Int deriving (Show, Eq)
+newtype Lit = Lit Int deriving (Show, Eq, Ord)
 
 newtype Clause = Clause [Lit] deriving (Show, Eq)
 

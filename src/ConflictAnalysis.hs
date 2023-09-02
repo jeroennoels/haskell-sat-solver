@@ -1,5 +1,5 @@
 module ConflictAnalysis (
-  Destination(..), Learn(..),
+  Conflict(..), Learn(..),
   analyzeConflict) where
 
 import Global
@@ -14,13 +14,13 @@ import Data.IntMap (IntMap)
 import qualified Data.IntMap as M
 
 
-data Destination = Conflict Lit [Clause] [[Implied]]
+data Conflict = Conflict Lit [Clause] [[Implied]]
   deriving Show
 
 -- Separate the UIP from the rest.
 data Learn = Learn Lit [Lit] deriving Show
 
-analyzeConflict :: Destination -> Learn
+analyzeConflict :: Conflict -> Learn
 analyzeConflict (Conflict lastDecision conflicts implieds)
   | optimized = learn
   | verifyIndex index && assertSize = learn
@@ -29,17 +29,19 @@ analyzeConflict (Conflict lastDecision conflicts implieds)
     flatten = concat (reverse implieds)
     set = buildCurrentSet lastDecision flatten
     index = buildIndex set flatten
-    conflict = antecedentOfConflict set $ head conflicts -- only use the first
-    graph = buildImplicationGraph lastDecision index conflict
-    learn = learnedClause lastDecision index graph
+    conflict = head conflicts  -- only use the first one, for now
+    Split young old _ = antecedentOfConflict set conflict
+    graph = buildImplicationGraph lastDecision index young
+    learn = learnedClause lastDecision index graph old
     assertSize = let (a,b,c) = (length flatten, M.size index, S.size set)
                  in a == b && c == a+1
 
 
-antecedentOfConflict :: IntSet -> Clause -> [Lit]
-antecedentOfConflict set (Clause xs) = filter keep (map negation xs)
+antecedentOfConflict :: IntSet -> Clause -> Split
+antecedentOfConflict set (Clause xs) = Split young old undefined
   where
-    keep (Lit i) = S.member i set
+    isYoung (Lit i) = S.member i set
+    (young, old) = partition isYoung (map negation xs)
 
 -- This set is used to quickly distinguish the current set of implied
 -- literals from previously assigned literals. The former become the
@@ -113,16 +115,17 @@ oldGeneration index (Vertex (Lit i)) = old
   where
     Split _ old _ = index M.! i
 
-learnedClause :: Lit -> IntMap Split -> [Edge V] -> Learn
-learnedClause lastDecision index graph
+learnedClause :: Lit -> IntMap Split -> [Edge V] -> [Lit]-> Learn
+learnedClause lastDecision index graph oldFromConflict
   | optimized = learn
   | unique vertices = learn
   | otherwise = error "learnedClause"
   where
     uip = lastDecision  -- todo
     vertices = future graph [Vertex uip]
-    sufficientForConflict = concatMap (oldGeneration index) vertices
-    learn = Learn uip $ map negation $ nub sufficientForConflict
+    sufficientForConflict = oldFromConflict ++
+                            concatMap (oldGeneration index) vertices
+    learn = Learn (negation uip) $ map negation $ nub sufficientForConflict
 
 
 

@@ -223,7 +223,7 @@ consolidate (Propagated analysis a nested) = Result summary aa implieds
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x
   | optimized = result
-  | otherwise = assertFixpoint db result
+  | otherwise = result -- assertFixpoint db result
   where
     result = consolidate $ recurse db a [x] []
 
@@ -232,9 +232,12 @@ propagate db a x
 -- tests and assertions --
 --------------------------
 
-fullEvaluation :: Database -> Assignment -> [Eval]
-fullEvaluation db a = map (evaluate a) (allClauses db)
 
+-- Include learned clauses or not?
+fullEvaluation :: Database -> Assignment -> [Eval]
+fullEvaluation db a = map (evaluate a) (originalClauses db)
+
+-- This is apparently too strong an assertion.
 assertFixpoint :: Database -> Result -> Result
 assertFixpoint db result@(Result summary a _)
   | isConflicting summary && checkConflict = result

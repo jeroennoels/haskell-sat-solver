@@ -1,6 +1,6 @@
 module Assignment (
   Assignment, assignmentCount,
-  makeEmptyAssignment, isAssigned, extend,
+  makeEmptyAssignment, isAssigned, extend, assign,
   randomUnassignedVariable, isComplete,
   test_assignment) where
 
