@@ -42,8 +42,6 @@ backjump db (a:b:cs) learn
   | optimized = a:b:cs
   | good learn a && not (good learn b) = a:b:cs
 
-canonical :: Clause -> Clause
-canonical (Clause xs) = Clause (sort xs)
 
 assertFixpoint :: Database -> Assignment -> Assignment
 assertFixpoint db a
@@ -72,8 +70,16 @@ recurse (rand:rands) trail db opposite
     bj = backjump db (undefined:trail) learn
 
 
+countUnique :: [Clause] -> (Int, Int)
+countUnique cs = (length cs, length cs')
+  where
+    cs' = nub $ map canonical cs
+    canonical (Clause xs) = Clause (sort xs)
 
-testDrive :: Database -> Int -> (Bool, Bool, Int)
-testDrive db seed = (checkSAT db a, checkLearnedSAT db a, length (learnedClauses db'))
+
+testDrive :: Database -> Int -> (Bool, Bool, (Int, Int))
+testDrive db seed = (checkSAT db a,
+                     checkLearnedSAT db a,
+                     countUnique (learnedClauses db'))
   where
     Sat a db' = drive (randomInts seed) db
