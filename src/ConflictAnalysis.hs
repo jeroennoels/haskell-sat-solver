@@ -10,8 +10,8 @@ import UnitPropagation (Implied (Implied))
 import Data.List (partition, nub)
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as S
-import Data.IntMap (IntMap)
-import qualified Data.IntMap as M
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as M
 
 
 data Conflict = Conflict Lit [Clause] [[Implied]]

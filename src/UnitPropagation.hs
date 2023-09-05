@@ -1,7 +1,7 @@
 module UnitPropagation (
   ConflictDetail(..), Implied(..), Summary(..), Result(..),
   propagate, isConflicting, conflictClause,
-  showStatistics,
+  checkSAT, checkLearnedSAT, isFixpoint, showStatistics,
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
@@ -223,9 +223,15 @@ consolidate (Propagated analysis a nested) = Result summary aa implieds
 propagate :: Database -> Assignment -> Lit -> Result
 propagate db a x
   | optimized = result
-  | otherwise = result -- assertFixpoint db result
+  | otherwise = result -- assertFixpoint' db result
   where
     result = consolidate $ recurse db a [x] []
+
+checkSAT :: Database -> Assignment -> Bool
+checkSAT db a = all isSatisfied $ map (evaluate a) (originalClauses db)
+
+checkLearnedSAT :: Database -> Assignment -> Bool
+checkLearnedSAT db a = all isSatisfied $ map (evaluate a) (learnedClauses db)
 
 
 --------------------------
@@ -237,9 +243,15 @@ propagate db a x
 fullEvaluation :: Database -> Assignment -> [Eval]
 fullEvaluation db a = map (evaluate a) (originalClauses db)
 
+isFixpoint :: Database -> Assignment -> Bool
+isFixpoint db a = null units
+  where
+    evals = fullEvaluation db a
+    units = filter isUnit evals
+
 -- This is apparently too strong an assertion.
-assertFixpoint :: Database -> Result -> Result
-assertFixpoint db result@(Result summary a _)
+assertFixpoint' :: Database -> Result -> Result
+assertFixpoint' db result@(Result summary a _)
   | isConflicting summary && checkConflict = result
   | null units && null direct && null clausesResult = result
   | otherwise = error "assertFixpoint"
