@@ -23,7 +23,7 @@ data Learn = Learn Lit [Lit] deriving Show
 analyzeConflict :: Conflict -> Learn
 analyzeConflict (Conflict lastDecision conflicts implieds)
   | optimized = learn
-  | verifyIndex index && assertSize = learn
+  | verifyIndex index && assertSize && assertTopologicalSort graph Kappa = learn
   | otherwise = error "analyzeConflict"
   where
     flatten = concat (reverse implieds)
@@ -121,7 +121,7 @@ learnedClause lastDecision index graph oldFromConflict
   | unique vertices = learn
   | otherwise = error "learnedClause"
   where
-    uip = lastDecision  -- todo
+    Vertex uip = dominators graph Kappa --lastDecision  -- todo
     vertices = future graph [Vertex uip]
     sufficientForConflict = oldFromConflict ++
                             concatMap (oldGeneration index) vertices

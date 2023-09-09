@@ -2,7 +2,7 @@ module Global where
 
 {-# INLINE optimized #-}
 optimized :: Bool
-optimized = False
+optimized = True
 
 type RandomInt = Int
 

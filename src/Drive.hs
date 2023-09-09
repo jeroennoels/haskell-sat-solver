@@ -57,13 +57,14 @@ recurse (rand:rands) trail db opposite
   | isComplete a = Sat a db
   | isConflict && null trail = Unsat  -- I have yet to understand this
   | isConflict && isNothing opposite = recurse rands bj db' (Just x)
-  | isConflict = recurse rands (tail trail) db' Nothing  -- backtrack
+  | isConflict = recurse rands backtrack db' Nothing
   | otherwise = recurse rands (assertFixpoint db aa : trail) db Nothing
   where
     a = head trail
     decision = fromMaybe (decide rand a) opposite
     result@(Result summary aa _) = propagate db a decision
     isConflict = isConflicting summary
+    backtrack = let n = length trail in drop (toRange rand (1,n-1)) trail
     -- only forced in case of conflict
     learn@(Learn x xs) = analyzeConflict $ extractConflict decision result
     db' = addLearnedClause db $ Clause (x:xs)
@@ -77,7 +78,7 @@ countUnique cs = (length cs, length cs')
     canonical (Clause xs) = Clause (sort xs)
 
 
-testDrive :: Database -> Int -> (Bool, Bool, (Int, Int))
+-- testDrive :: Database -> Int -> ?
 testDrive db seed = (checkSAT db a,
                      checkLearnedSAT db a,
                      countUnique (learnedClauses db'))

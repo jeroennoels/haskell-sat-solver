@@ -1,4 +1,4 @@
-module RandomInt (randomInts) where
+module RandomInt (randomInts, toRange) where
 
 import System.Random (Random, randomR, mkStdGen)
 
@@ -10,3 +10,9 @@ randomsR seed range = go (mkStdGen seed)
 
 randomInts :: Int -> [Int]
 randomInts seed = randomsR seed (minBound :: Int, maxBound :: Int)
+
+toRange :: Int -> (Int, Int) -> Int
+toRange x (a,b)
+  | a > b = error "RandomInt.toRange"
+  | a == b = a
+  | otherwise = a + mod x (b-a+1)
