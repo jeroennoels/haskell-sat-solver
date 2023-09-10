@@ -31,23 +31,25 @@ future es vs = nub $
   tail $
   iterate (outgoing es) vs
 
+-- Naive.
 predecessors :: Eq v => Graph v -> v -> [(v,[v])]
 predecessors es exit = map go vs
   where
     vs = nub (map source es) ++ [exit]
     go v = let preds = nub $ map source $ filter (hasTarget v) es
-           in (v,preds)
+           in (v, preds)
 
--- assuming tsort
+-- Assuming tsort. Naive implementation. Good enough for now.
 dominators :: Eq v => Graph v -> v -> v
 dominators es exit = head $ intersect tsort uips
   where
     (start,[]):preds = predecessors es exit
     go acc (b,as) = let dom:doms = map (fromJust . flip lookup acc) as
                         curr = b : foldl intersect dom doms
-                    in (b,curr):acc
+                    in (b,curr) : acc
     tsort = reverse $ nub (map source es)
-    (ex,uips):_ = foldl go [(start,[start])] preds
+    (ex,uips):_ = foldl go [(start, [start])] preds
+
 
 assertTopologicalSort :: Eq v => Graph v -> v -> Bool
 assertTopologicalSort es exit = all good es

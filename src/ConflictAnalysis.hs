@@ -1,6 +1,6 @@
 module ConflictAnalysis (
   Conflict(..), Learn(..),
-  analyzeConflict) where
+  analyzeConflicts) where
 
 import Global
 import Graph
@@ -20,22 +20,27 @@ data Conflict = Conflict Lit [Clause] [[Implied]]
 -- Separate the UIP from the rest.
 data Learn = Learn Lit [Lit] deriving Show
 
-analyzeConflict :: Conflict -> Learn
-analyzeConflict (Conflict lastDecision conflicts implieds)
+analyzeConflicts :: Conflict -> [Learn]
+analyzeConflicts (Conflict lastDecision conflicts implieds)
   | optimized = learn
-  | verifyIndex index && assertSize && assertTopologicalSort graph Kappa = learn
+  | verifyIndex index && assertSize = learn
   | otherwise = error "analyzeConflict"
   where
     flatten = concat (reverse implieds)
     set = buildCurrentSet lastDecision flatten
     index = buildIndex set flatten
-    conflict = head conflicts  -- only use the first one, for now
-    Split young old _ = antecedentOfConflict set conflict
-    graph = buildImplicationGraph lastDecision index young
-    learn = learnedClause lastDecision index graph old
+    learn = map (analyzeOneConflict lastDecision set index) conflicts
     assertSize = let (a,b,c) = (length flatten, M.size index, S.size set)
                  in a == b && c == a+1
 
+analyzeOneConflict :: Lit -> IntSet -> IntMap Split -> Clause -> Learn
+analyzeOneConflict lastDecision set index conflict
+  | optimized = learn
+  | assertTopologicalSort graph Kappa = learn
+  where
+    Split young old _ = antecedentOfConflict set conflict
+    graph = buildImplicationGraph lastDecision index young
+    learn = learnedClause lastDecision index graph old
 
 antecedentOfConflict :: IntSet -> Clause -> Split
 antecedentOfConflict set (Clause xs) = Split young old undefined
@@ -121,7 +126,7 @@ learnedClause lastDecision index graph oldFromConflict
   | unique vertices = learn
   | otherwise = error "learnedClause"
   where
-    Vertex uip = dominators graph Kappa --lastDecision  -- todo
+    Vertex uip = dominators graph Kappa
     vertices = future graph [Vertex uip]
     sufficientForConflict = oldFromConflict ++
                             concatMap (oldGeneration index) vertices

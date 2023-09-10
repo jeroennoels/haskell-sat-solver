@@ -1,7 +1,7 @@
 module UnitPropagation (
   ConflictDetail(..), Implied(..), Summary(..), Result(..),
   propagate, isConflicting, conflictClause,
-  checkSAT, checkLearnedSAT, isFixpoint, showStatistics,
+  checkSAT, checkLearnedSAT, isFixpoint, showStatistics, assertUnit,
   test_unitPropagation) where
 
 import Data.Maybe (mapMaybe)
@@ -130,17 +130,17 @@ uniqueUnits = map unwrap . nub . map Same
 data Propagated = Propagated Analysis Assignment [[Eval]] deriving Show
 
 -- Every step adds a layer of nodes, building a directed acyclic graph.
-recurse :: Database -> Assignment -> [Lit] -> [[Eval]] -> Propagated
-recurse db a xs acc =
+recurse :: Database -> Assignment -> [Clause] -> [Lit] -> [[Eval]] -> Propagated
+recurse db a learned xs acc =
   case analysis of
     Units [] -> Propagated analysis aa acc
     Units units -> let uniqs = uniqueUnits units  -- arbitrary
                        layer = map fromUnit uniqs
-                   in recurse db aa layer (uniqs:acc)
+                   in recurse db aa [] layer (uniqs:acc)
     Conflicts _ _ -> Propagated analysis aa acc
   where
     aa = extend a xs
-    analysis = analyze (evaluations db aa xs)
+    analysis = analyze (map (evaluate a) learned ++ evaluations db aa xs)
 
 -- The @Unit@ case of @Eval@ is all we need outside of this module.
 data Implied = Implied Clause Lit deriving Show
@@ -220,12 +220,12 @@ consolidate (Propagated analysis a nested) = Result summary aa implieds
     -- include implied literals from mutual conflicts in the assignment
     aa = if null extras then a else extend a (map impliedLiteral extras)
 
-propagate :: Database -> Assignment -> Lit -> Result
-propagate db a x
+propagate :: Database -> Assignment -> [Clause] -> [Lit] -> Result
+propagate db a learned xs
   | optimized = result
   | otherwise = result -- assertFixpoint' db result
   where
-    result = consolidate $ recurse db a [x] []
+    result = consolidate $ recurse db a learned xs []
 
 checkSAT :: Database -> Assignment -> Bool
 checkSAT db a = all isSatisfied $ map (evaluate a) (originalClauses db)
@@ -238,6 +238,8 @@ checkLearnedSAT db a = all isSatisfied $ map (evaluate a) (learnedClauses db)
 -- tests and assertions --
 --------------------------
 
+assertUnit :: Assignment -> Clause -> Bool
+assertUnit a c = isUnit (evaluate a c)
 
 -- Include learned clauses or not?
 fullEvaluation :: Database -> Assignment -> [Eval]
