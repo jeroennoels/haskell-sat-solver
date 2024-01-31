@@ -1,5 +1,6 @@
 # haskell-sat-solver
 
-- I am building a simple CDCL sat solver in haskell.
-- Mostly to explore the subject.
-- Work in progress.
+I started building a simple CDCL sat solver in haskell,
+mostly to learn and explore the subject. 
+I learned a lot but also made it too complicated.
+Perhaps I will start over.
