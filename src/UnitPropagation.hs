@@ -136,6 +136,7 @@ recurse db a learned xs acc =
     Units [] -> Propagated analysis aa acc
     Units units -> let uniqs = uniqueUnits units  -- arbitrary
                        layer = map fromUnit uniqs
+                   -- Why not pass on @learned@ here??? Could be a huge bug.
                    in recurse db aa [] layer (uniqs:acc)
     Conflicts _ _ -> Propagated analysis aa acc
   where
